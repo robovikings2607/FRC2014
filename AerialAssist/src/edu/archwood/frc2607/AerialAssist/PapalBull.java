@@ -766,6 +766,28 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         TalonDriveTrain();
     }
 
+    // don't use (yet)
+    private void TalonDriveWithGyro() {
+    	// adds gyro correction for mecanum base
+        WheelRPMController leftFrontMotors, rightFrontMotors, leftRearMotors, rightRearMotors;
+
+        System.out.println("starting TalonDriveWithGyro thread...");
+        leftFrontMotors = new WheelRPMController("leftFrontMotors", leftFrontIndex);
+        rightFrontMotors = new WheelRPMController("rightFrontMotors", rightFrontIndex);
+        leftRearMotors = new WheelRPMController("leftRearMotors", leftRearIndex);
+        rightRearMotors = new WheelRPMController("rightRearMotors", rightRearIndex);
+
+        leftFrontMotors.enable();
+        leftRearMotors.enable();
+        rightFrontMotors.enable();
+        rightRearMotors.enable();
+        System.out.println("TalonDriveWithGyro thread: WheelRPMControllers initialized");
+        
+        //zVal is our desired rotation (commanded by the driver)
+        //TODO:  finish
+    }
+    
+    
     private void TalonDriveTrain() {
         // NOTE:  do NOT use RobotDrive.setMaxOutput for the Talons....due to the 
         //          encoder max speeds being different on the one gearbox, we need 

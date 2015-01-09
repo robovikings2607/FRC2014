@@ -32,7 +32,9 @@ public interface CompBotConstants {
     // Analog Module 
     final int analogLeftSonar = 6;
     final int analogRightSonar = 7;
-
+    final int analogTempSensor = 4;
+    final int analogGyro = 5;
+    
     // Sidecar DIO
     final int diPressureSwitch = 1;
     final int diLauncherSwitch = 2;

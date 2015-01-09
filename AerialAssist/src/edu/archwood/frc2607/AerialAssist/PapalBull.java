@@ -6,6 +6,7 @@
 /*----------------------------------------------------------------------------*/
 package edu.archwood.frc2607.AerialAssist;
 
+import edu.archwood.frc2607.utils.TempCorrectedGyro;
 import edu.archwood.frc2607.utils.robovikingStick;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -13,6 +14,7 @@ import edu.wpi.first.wpilibj.DigitalOutput;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.DriverStationLCD;
+import edu.wpi.first.wpilibj.Gyro;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.RobotDrive;
@@ -62,7 +64,9 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
     boolean BROKEN = false;
     int brokenTalon = 0;
     WheelRPMController TalonTeamate[][] = new WheelRPMController[4][3];
-
+    private TempCorrectedGyro gyro;
+    private boolean useGyro = false;
+    
     public void robotInit() {
         System.out.println("inSanity Check");
 //        leds = new LEDManager();
@@ -73,7 +77,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         theCompressinator.start();
         initAutoTimer();
         driveThread = new Thread(this);
-
+        gyro = new TempCorrectedGyro(analogTempSensor, analogGyro);
         shootRun = (new Runnable() {
             public void run() {
                 chaputpult.set(true);
@@ -146,6 +150,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         dashBoard();
         if (xboxSpeedRacer.getButtonToggle(8)) {
             autonMode++;
+            useGyro = !useGyro;
         }
         if (autonMode > 7) {
             autonMode = 0;
@@ -157,6 +162,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
 
         lcd.println(DriverStationLCD.Line.kUser1, 1, "Auton: " + autonModes[autonMode] + "        ");
         lcdGoalMessage(disabledBothHot, disabledLeftOnly, disabledRightOnly);
+        lcd.println(DriverStationLCD.Line.kUser3, 1, "useGyro: " + useGyro + "      ");
         lcd.updateLCD();
     }
 
@@ -720,6 +726,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
 
     public void testInit() {
         tick = 0;
+        gyro.reset();
     }
 
     public void dashBoard() {
@@ -759,11 +766,16 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
             xGol = 0.0;
             zGol = 0.0;
         }
+        
+        if (++tick >= 25) {
+        	System.out.println("Gyro: " + gyro.getRelativeAngle());
+        	tick = 0;
+        }
 
     }
 
     public void run() {
-        TalonDriveTrain();
+        TalonDriveWithGyro();
     }
 
     // don't use (yet)
@@ -783,8 +795,58 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         rightRearMotors.enable();
         System.out.println("TalonDriveWithGyro thread: WheelRPMControllers initialized");
         
-        //zVal is our desired rotation (commanded by the driver)
-        //TODO:  finish
+        /*
+         * zVal is the rotation commanded by the driver....if driver doesn't want to rotate, use
+         * gyro to maintain last heading
+         * 
+         */
+        int threadTick = 0;
+        boolean gyroReset = false;
+        while (true) {
+        	boolean driveStraight = (Math.abs(zVal) <= .03) ? true : false;
+        	
+        	if (driveStraight && !gyroReset) {
+        		gyroReset = true;
+        		gyro.reset();
+        	}
+        	
+        	if (!driveStraight) gyroReset = false;
+        	
+        	double rotVal = zVal;
+        	if (driveStraight && useGyro) rotVal = gyro.getRelativeAngle() * -.0025;
+        	
+        	// send motor wheel speeds (range -1.0 to 1.0, WheelRPMController takes care of scaling to RPM values)
+        	double frontLeftSpeed = xVal + yVal + rotVal,
+        		   frontRightSpeed = -xVal + yVal - rotVal,
+        		   rearLeftSpeed = -xVal + yVal + rotVal,
+        		   rearRightSpeed = xVal + yVal - rotVal;
+        	
+        	double maxWheel = Math.abs(frontLeftSpeed);
+        	if (Math.abs(frontRightSpeed) > maxWheel) maxWheel = Math.abs(frontRightSpeed);
+        	if (Math.abs(rearLeftSpeed) > maxWheel) maxWheel = Math.abs(rearLeftSpeed);
+        	if (Math.abs(rearRightSpeed) > maxWheel) maxWheel = Math.abs(rearRightSpeed);
+        	
+        	if (maxWheel > 1.0) {
+        		frontLeftSpeed /= maxWheel;
+        		frontRightSpeed /= maxWheel;
+        		rearLeftSpeed /= maxWheel;
+        		rearRightSpeed /= maxWheel;
+        	}
+        	
+        	leftFrontMotors.set(frontLeftSpeed);
+        	rightFrontMotors.set(frontRightSpeed);
+        	leftRearMotors.set(rearLeftSpeed);
+        	rightRearMotors.set(rearRightSpeed);
+        	
+        	if (++threadTick >= 25) {
+        		System.out.println("Gyro: " + gyro.getRelativeAngle());
+        		threadTick = 0;
+        	}
+        	
+        	try {
+        		Thread.sleep(20);
+        	} catch (Exception e) {}
+        }
     }
     
     

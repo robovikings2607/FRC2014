@@ -786,81 +786,9 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
     }
 
     public void run() {
-        TalonDriveWithGyro();
+        TalonDriveTrain();
     }
 
-    // don't use (yet)
-    private void TalonDriveWithGyro() {
-    	// adds gyro correction for mecanum base
-        WheelRPMController leftFrontMotors, rightFrontMotors, leftRearMotors, rightRearMotors;
-
-        System.out.println("starting TalonDriveWithGyro thread...");
-        leftFrontMotors = new WheelRPMController("leftFrontMotors", leftFrontIndex);
-        rightFrontMotors = new WheelRPMController("rightFrontMotors", rightFrontIndex);
-        leftRearMotors = new WheelRPMController("leftRearMotors", leftRearIndex);
-        rightRearMotors = new WheelRPMController("rightRearMotors", rightRearIndex);
-
-        leftFrontMotors.enable();
-        leftRearMotors.enable();
-        rightFrontMotors.enable();
-        rightRearMotors.enable();
-        System.out.println("TalonDriveWithGyro thread: WheelRPMControllers initialized");
-        
-        /*
-         * zVal is the rotation commanded by the driver....if driver doesn't want to rotate, use
-         * gyro to maintain last heading
-         * 
-         */
-        int threadTick = 0;
-        boolean gyroReset = false;
-        while (true) {
-        	boolean driveStraight = (Math.abs(zVal) <= .03) ? true : false;
-        	
-        	if (driveStraight && !gyroReset) {
-        		gyroReset = true;
-        		gyro.reset();
-        	}
-        	
-        	if (!driveStraight) gyroReset = false;
-        	
-        	double rotVal = zVal;
-        	if (driveStraight && useGyro) rotVal = gyro.getRelativeAngle() * -.0025;
-        	
-        	// send motor wheel speeds (range -1.0 to 1.0, WheelRPMController takes care of scaling to RPM values)
-        	double frontLeftSpeed = xVal + yVal + rotVal,
-        		   frontRightSpeed = -xVal + yVal - rotVal,
-        		   rearLeftSpeed = -xVal + yVal + rotVal,
-        		   rearRightSpeed = xVal + yVal - rotVal;
-        	
-        	double maxWheel = Math.abs(frontLeftSpeed);
-        	if (Math.abs(frontRightSpeed) > maxWheel) maxWheel = Math.abs(frontRightSpeed);
-        	if (Math.abs(rearLeftSpeed) > maxWheel) maxWheel = Math.abs(rearLeftSpeed);
-        	if (Math.abs(rearRightSpeed) > maxWheel) maxWheel = Math.abs(rearRightSpeed);
-        	
-        	if (maxWheel > 1.0) {
-        		frontLeftSpeed /= maxWheel;
-        		frontRightSpeed /= maxWheel;
-        		rearLeftSpeed /= maxWheel;
-        		rearRightSpeed /= maxWheel;
-        	}
-        	
-        	leftFrontMotors.set(frontLeftSpeed);
-        	rightFrontMotors.set(frontRightSpeed);
-        	leftRearMotors.set(rearLeftSpeed);
-        	rightRearMotors.set(rearRightSpeed);
-        	
-        	if (++threadTick >= 25) {
-        		System.out.println("Gyro: " + gyro.getRelativeAngle());
-        		threadTick = 0;
-        	}
-        	
-        	try {
-        		Thread.sleep(20);
-        	} catch (Exception e) {}
-        }
-    }
-    
-    
     private void TalonDriveTrain() {
         // NOTE:  do NOT use RobotDrive.setMaxOutput for the Talons....due to the 
         //          encoder max speeds being different on the one gearbox, we need 
@@ -912,6 +840,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
 
         System.out.println("thread: entering Talon drive loop...");
         int threadTick = 0;
+        boolean driveStraight = false, gyroReset = false;
         while (true) {
             if (isEnabled()) {
                 lED.set(chaputpultReadySwitch.get());
@@ -929,7 +858,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
                     leftRearMotors.displayWheelRPM();
                     rightFrontMotors.displayWheelRPM();
                     rightRearMotors.displayWheelRPM();
-                    System.out.println("======================================");
+                    System.out.println("==== Gyro: " + gyro.getRelativeAngle() + "======================================");
                     threadTick = 0;
                 }
                 WheelRPMController.off = !overrideSwitches.getRawButton(2);
@@ -940,7 +869,15 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
                     TalonTeamate[brokenTalon][1].set(yVal - zVal - xVal);
                     TalonTeamate[brokenTalon][2].set(xVal);
                 } else {
-                    theDriveinator.mecanumDrive_Cartesian(xVal, yVal, zVal, 0);
+                	driveStraight = (Math.abs(zVal) <= .03) ? true : false;                	
+                	if (driveStraight && !gyroReset) {
+                		gyroReset = true;
+                		gyro.reset();
+                	}
+                	if (!driveStraight) gyroReset = false;                	
+                	double rotVal = zVal;
+                	if (driveStraight && useGyro) rotVal = gyro.getRelativeAngle() * -.0025;
+                    theDriveinator.mecanumDrive_Cartesian(xVal, yVal, rotVal, 0);
                 }
             }
             try {

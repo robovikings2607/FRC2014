@@ -66,6 +66,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
     WheelRPMController TalonTeamate[][] = new WheelRPMController[4][3];
     private TempCorrectedGyro gyro;
     private boolean useGyro = false;
+    private double timeBase;
     
     public void robotInit() {
         System.out.println("inSanity Check");
@@ -140,7 +141,9 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
      * This function is called periodically during autonomous
      */
     public void disabledInit() {
-
+    	gyro.reset();
+    	tick = 0;
+    	timeBase = Timer.getFPGATimestamp();
     }
 
     public void disabledPeriodic() {
@@ -164,6 +167,12 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         lcdGoalMessage(disabledBothHot, disabledLeftOnly, disabledRightOnly);
         lcd.println(DriverStationLCD.Line.kUser3, 1, "useGyro: " + useGyro + "      ");
         lcd.updateLCD();
+        
+        if (++tick >= 25) {
+        	double curTime = Timer.getFPGATimestamp() - timeBase;
+        	System.out.println(curTime + " -> Gyro: " + gyro.getRelativeAngle());
+        	tick = 0;
+        }
     }
 
     private void lcdGoalMessage(boolean both, boolean left, boolean right) {

@@ -170,7 +170,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         lcd.println(DriverStationLCD.Line.kUser3, 1, "useGyro: " + useGyro + "      ");
         lcd.updateLCD();
         
-        if (++tick >= 25) {
+        if (++tick >= 50) {
         	double curTime = Timer.getFPGATimestamp() - timeBase;
         	System.out.println(curTime + " -> Gyro: " + gyro.getRelativeAngle());
         	tick = 0;
@@ -778,11 +778,6 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
             zGol = 0.0;
         }
         
-        if (++tick >= 25) {
-        	System.out.println("Gyro: " + gyro.getRelativeAngle());
-        	tick = 0;
-        }
-
     }
 
     public void run() {

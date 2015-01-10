@@ -154,6 +154,8 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         if (xboxSpeedRacer.getButtonToggle(8)) {
             autonMode++;
             useGyro = !useGyro;
+            gyro.reset();
+            timeBase = Timer.getFPGATimestamp();
         }
         if (autonMode > 7) {
             autonMode = 0;

@@ -64,9 +64,14 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
     boolean BROKEN = false;
     int brokenTalon = 0;
     WheelRPMController TalonTeamate[][] = new WheelRPMController[4][3];
-    private TempCorrectedGyro gyro;
+    private Gyro gyro;
     private boolean useGyro = false;
     private double timeBase;
+    private DigitalInput Sauron;
+    private DigitalInput Haides;
+   
+    
+    
     
     public void robotInit() {
         System.out.println("inSanity Check");
@@ -78,7 +83,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         theCompressinator.start();
         initAutoTimer();
         driveThread = new Thread(this);
-        gyro = new TempCorrectedGyro(analogTempSensor, analogGyro);
+        gyro = new Gyro(analogGyro);
         shootRun = (new Runnable() {
             public void run() {
                 chaputpult.set(true);
@@ -135,6 +140,8 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
             }
         });
         retractor.start();
+        Sauron = new DigitalInput(sauronChannel);
+        Haides = new DigitalInput(haidesChannel);
     }
 
     /**
@@ -172,7 +179,8 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         
         if (++tick >= 50) {
         	double curTime = Timer.getFPGATimestamp() - timeBase;
-        	System.out.println(curTime + " -> Gyro: " + gyro.getRelativeAngle());
+        	System.out.println(curTime + " -> Gyro: " + gyro.getAngle());
+        //	System.out.println("Sauron: " + Sauron.get() + " Haides: " + Haides.get());
         	tick = 0;
         }
     }
@@ -713,9 +721,9 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
             deployTheHolyRollers = !deployTheHolyRollers;
         }
 
-        if (xboxSpeedRacer.getRawButton(5) || coPilotOfDoom.getRawButton(5)) {   // pickup motor (grab ball, or release ball)
+        if ((xboxSpeedRacer.getRawButton(5) || coPilotOfDoom.getRawButton(5))&& Sauron.get()) {   // pickup motor (grab ball, or release ball)
             holyRollers.set(-.75);
-        } else if (xboxSpeedRacer.getRawButton(2) || coPilotOfDoom.getRawButton(2) || (launchTrigger > .8)) {
+        } else if ((xboxSpeedRacer.getRawButton(2) || coPilotOfDoom.getRawButton(2) || (launchTrigger > .8)) && Haides.get()) {
             holyRollers.set(.75);
         } else {
             holyRollers.set(0);
@@ -836,6 +844,7 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
         System.out.println("thread: entering Talon drive loop...");
         int threadTick = 0;
         boolean driveStraight = false, gyroReset = false;
+        double errI = 0.0, errD = 0.0, errPrev = 0.0;
         while (true) {
             if (isEnabled()) {
                 lED.set(chaputpultReadySwitch.get());
@@ -853,12 +862,13 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
                     leftRearMotors.displayWheelRPM();
                     rightFrontMotors.displayWheelRPM();
                     rightRearMotors.displayWheelRPM();
-                    System.out.println("==== Gyro: " + gyro.getRelativeAngle() + "======================================");
+                    System.out.println("==== Gyro: " + gyro.getAngle() + "======================================");
                     threadTick = 0;
                 }
                 WheelRPMController.off = !overrideSwitches.getRawButton(2);
                 dashingTTS.setWarningMessage(leftFrontMotors.getError()+rightFrontMotors.getError()+leftRearMotors.getError()+rightRearMotors.getError());
                 BROKEN = overrideSwitches.getRawButton(1);
+                
                 if (BROKEN) {
                     TalonTeamate[brokenTalon][0].set(yVal + zVal);
                     TalonTeamate[brokenTalon][1].set(yVal - zVal - xVal);
@@ -868,11 +878,24 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
                 	if (driveStraight && !gyroReset) {
                 		gyroReset = true;
                 		gyro.reset();
+                		errI = 0.0;
+                		errD = 0.0;
+                		errPrev = 0.0;
                 	}
                 	if (!driveStraight) gyroReset = false;                	
                 	double rotVal = zVal;
-                	if (driveStraight && useGyro) rotVal = gyro.getRelativeAngle() * -.0025;
+                	if (driveStraight && useGyro) {
+                		double err = gyro.getAngle();
+                		errI += err;
+                		errD = err - errPrev;
+                		rotVal = rotVal + (err * .003) + (errI * .00002) + (errD * .0002);                		
+                	}
                     theDriveinator.mecanumDrive_Cartesian(xVal, yVal, rotVal, 0);
+                    if (threadTick % 5 == 0) {
+                        lcd.println(DriverStationLCD.Line.kUser4, 1, "Err: " + gyro.getAngle() + "      ");
+                        lcd.println(DriverStationLCD.Line.kUser5, 1, "rotVal: " + rotVal + "        ");
+                        lcd.updateLCD();
+                    }
                 }
             }
             try {

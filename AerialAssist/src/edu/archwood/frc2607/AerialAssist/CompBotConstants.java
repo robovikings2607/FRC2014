@@ -32,8 +32,8 @@ public interface CompBotConstants {
     // Analog Module 
     final int analogLeftSonar = 6;
     final int analogRightSonar = 7;
-    final int analogTempSensor = 4;
-    final int analogGyro = 5;
+    final int analogTempSensor = 5;
+    final int analogGyro = 2;			//was 5
     
     // Sidecar DIO
     final int diPressureSwitch = 1;
@@ -83,6 +83,10 @@ public interface CompBotConstants {
 
     //Accel values
     final float joyAccel = 0.1f;
+    final int sauronChannel =11;
+    final int haidesChannel = 12;
+    	
+    
     
     final int[][] canMecanumAddresses = new int[][] { 
                                         {5,9},          // rightFront Jags (speed, volt)

@@ -874,25 +874,26 @@ public class PapalBull extends IterativeRobot implements Runnable, CompBotConsta
                     TalonTeamate[brokenTalon][1].set(yVal - zVal - xVal);
                     TalonTeamate[brokenTalon][2].set(xVal);
                 } else {
-                	driveStraight = (Math.abs(zVal) <= .03) ? true : false;                	
-                	if (driveStraight && !gyroReset) {
+                	driveStraight = (Math.abs(zVal) <= .03) ? true : false;
+                	boolean tryingToDrive = (yGol != 0.0 || xGol != 0.0);
+                	if (driveStraight && !gyroReset && tryingToDrive) {
                 		gyroReset = true;
                 		gyro.reset();
                 		errI = 0.0;
                 		errD = 0.0;
                 		errPrev = 0.0;
                 	}
-                	if (!driveStraight) gyroReset = false;                	
+                	if (!driveStraight & !tryingToDrive) gyroReset = false;                	
                 	double rotVal = zVal;
-                	if (driveStraight && useGyro) {
-                		double err = gyro.getAngle();
+                	double err = gyro.getAngle();
+                	if (driveStraight && useGyro && tryingToDrive) {
                 		errI += err;
                 		errD = err - errPrev;
-                		rotVal = rotVal + (err * .003) + (errI * .00002) + (errD * .0002);                		
+                		rotVal = rotVal + (err * .004) + (errI * .00001) + (errD * .0003);                		
                 	}
                     theDriveinator.mecanumDrive_Cartesian(xVal, yVal, rotVal, 0);
                     if (threadTick % 5 == 0) {
-                        lcd.println(DriverStationLCD.Line.kUser4, 1, "Err: " + gyro.getAngle() + "      ");
+                        lcd.println(DriverStationLCD.Line.kUser4, 1, "Err: " + err + "      ");
                         lcd.println(DriverStationLCD.Line.kUser5, 1, "rotVal: " + rotVal + "        ");
                         lcd.updateLCD();
                     }
